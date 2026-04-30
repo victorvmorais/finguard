@@ -314,6 +314,10 @@ tbody td{padding:10px 13px;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Novo Lançamento
     </div>
+    <div class="nav-item" data-page="rendimentos" onclick="goTo('rendimentos',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Rendimentos
+    </div>
     <div class="nav-item" data-page="fixas" onclick="goTo('fixas',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Despesas Fixas
@@ -484,6 +488,41 @@ tbody td{padding:10px 13px;}
     </div>
   </div>
 
+  <!-- ═══ RENDIMENTOS ═══ -->
+  <div class="page" id="page-rendimentos">
+    <div class="sec-row">
+      <h2 class="sec-title">Rendimentos</h2>
+      <div class="mes-nav">
+        <button onclick="chMes(-1)">&#8592;</button>
+        <span id="lbl-mes-rend">—</span>
+        <button onclick="chMes(1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Cards resumo -->
+    <div class="cards-grid" id="rend-cards" style="margin-bottom:24px"></div>
+
+    <!-- Renda fixa -->
+    <div class="chart-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0">Renda Fixa</h3>
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalRendFixo()">+ Cadastrar</button>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Aparece automaticamente todo mês. Cadastre uma vez.</p>
+      <div id="lista-rend-fixo"><div class="empty">Nenhuma renda fixa cadastrada.</div></div>
+    </div>
+
+    <!-- Renda variável do mês -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0">Renda Variável — <span id="lbl-mes-rend2" style="color:var(--accent)"></span></h3>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalRendVar()">+ Lançar</button>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Freelances, bônus, extras. Lançado por mês.</p>
+      <div class="tbl-wrap" id="tbl-rend-var"></div>
+    </div>
+  </div>
+
   <!-- ═══ DESPESAS FIXAS ═══ -->
   <div class="page" id="page-fixas">
     <div class="sec-row">
@@ -587,6 +626,80 @@ tbody td{padding:10px 13px;}
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="fecharModal('modal-fixa')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarFixa()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nova Renda Fixa -->
+<div class="backdrop" id="modal-rend-fixo">
+  <div class="modal">
+    <h3>Cadastrar Renda Fixa</h3>
+    <div class="form-grid">
+      <div class="fg span2">
+        <label>Fonte / Empresa</label>
+        <input type="text" id="rf-fonte" placeholder="Ex: Sou Energy, Emergency Talks">
+      </div>
+      <div class="fg span2">
+        <label>Descrição</label>
+        <input type="text" id="rf-desc" placeholder="Ex: Salário CLT">
+      </div>
+      <div class="fg">
+        <label>Valor (R$)</label>
+        <input type="number" id="rf-valor" placeholder="0,00" step="0.01">
+      </div>
+      <div class="fg">
+        <label>Categoria</label>
+        <select id="rf-cat">
+          <option value="Salário">Salário</option>
+          <option value="Pró-labore">Pró-labore</option>
+          <option value="Aluguel recebido">Aluguel recebido</option>
+          <option value="Investimento">Investimento</option>
+          <option value="Outro fixo">Outro fixo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-rend-fixo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRendFixo()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nova Renda Variável -->
+<div class="backdrop" id="modal-rend-var">
+  <div class="modal">
+    <h3>Lançar Renda Variável</h3>
+    <div class="form-grid">
+      <div class="fg span2">
+        <label>Fonte / Cliente</label>
+        <input type="text" id="rv-fonte" placeholder="Ex: Freela para empresa X">
+      </div>
+      <div class="fg span2">
+        <label>Descrição</label>
+        <input type="text" id="rv-desc" placeholder="Ex: Criação de site, Consultoria">
+      </div>
+      <div class="fg">
+        <label>Valor (R$)</label>
+        <input type="number" id="rv-valor" placeholder="0,00" step="0.01">
+      </div>
+      <div class="fg">
+        <label>Categoria</label>
+        <select id="rv-cat">
+          <option value="Freelance">Freelance</option>
+          <option value="Bônus">Bônus</option>
+          <option value="Comissão">Comissão</option>
+          <option value="Venda">Venda</option>
+          <option value="Outro variável">Outro variável</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Data</label>
+        <input type="date" id="rv-data">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-rend-var')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRendVar()">Lançar</button>
     </div>
   </div>
 </div>
@@ -741,6 +854,7 @@ function goTo(pg, el){
   if (pg==='dashboard') renderDash();
   if (pg==='despesas') renderDesp();
   if (pg==='fixas') renderFixas();
+  if (pg==='rendimentos') renderRendimentos();
   if (pg==='metas') renderMetas();
   if (pg==='config') renderCfg();
 }
@@ -804,10 +918,12 @@ function setStatus(id, st){
 }
 
 // ── DASHBOARD ──
-function renderAll(){ renderDash(); renderDesp(); renderFixas(); renderMetas(); renderCfg(); }
+function renderAll(){ renderDash(); renderDesp(); renderFixas(); renderMetas(); renderCfg(); renderRendimentos(); }
 
 function renderDash(){
   const lancs = getMes();
+  const ano = S.ano;
+  const { fixo, varr, total: rendaTotal } = getTotalRendaMes(S.mes, ano);
   const total = lancs.reduce((s,l) => s+parseFloat(l.valor||0),0);
   // Pagamento real: PAGO = valor total; parcial = valor digitado
   const totalPagoReal = lancs.reduce((s,l) => {
@@ -815,15 +931,16 @@ function renderDash(){
     return s + getPago(l.id);
   }, 0);
   const pend  = total - totalPagoReal;
-  const saldo = S.salario - totalPagoReal;
-  const pct   = S.salario > 0 ? (totalPagoReal/S.salario*100) : 0;
+  const saldo = rendaTotal - totalPagoReal;
+  const pct   = rendaTotal > 0 ? (totalPagoReal/rendaTotal*100) : 0;
+  const rendaLabel = rendaTotal !== S.salario ? `Fixa ${fmt(fixo)} + Var ${fmt(varr)}` : (S.empresa||'configurado');
 
   document.getElementById('dash-cards').innerHTML = [
-    {lbl:'Renda Mensal',   val:fmt(S.salario),      sub:S.empresa||'configurado', cls:''},
-    {lbl:'Total Previsto', val:fmt(total),           sub:`${lancs.length} despesas`, cls:'c-amber'},
-    {lbl:'Já Pago',        val:fmt(totalPagoReal),   sub:`${pct.toFixed(1)}% da renda`, cls:'c-purple'},
-    {lbl:'Pendente',       val:fmt(pend),            sub:`${lancs.filter(l=>getStatus(l)==='PENDENTE'&&getPago(l.id)<parseFloat(l.valor||0)).length} itens`, cls:'c-red'},
-    {lbl:'Saldo Estimado', val:fmt(saldo),           sub:'renda - pago', cls: saldo>=0?'c-green':'c-red'}
+    {lbl:'Renda do Mês',   val:fmt(rendaTotal),    sub:rendaLabel, cls:'c-green'},
+    {lbl:'Total Previsto', val:fmt(total),          sub:`${lancs.length} despesas`, cls:'c-amber'},
+    {lbl:'Já Pago',        val:fmt(totalPagoReal),  sub:`${pct.toFixed(1)}% da renda`, cls:'c-purple'},
+    {lbl:'Pendente',       val:fmt(pend),           sub:`${lancs.filter(l=>getStatus(l)==='PENDENTE'&&getPago(l.id)<parseFloat(l.valor||0)).length} itens`, cls:'c-red'},
+    {lbl:'Saldo Estimado', val:fmt(saldo),          sub:'renda - pago', cls: saldo>=0?'c-green':'c-red'}
   ].map(c=>`<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
 
   // bars por categoria
@@ -1067,6 +1184,152 @@ function excluirFixa(id){
   toast('Removida.','ok');
 }
 
+// ── RENDIMENTOS ──
+
+function getRendFixoMes() {
+  // Renda fixa: aparece todo mês automaticamente
+  return (S.rendasFixas || []);
+}
+
+function getRendVarMes(m, y) {
+  return (S.rendasVar || []).filter(r => {
+    const d = new Date(r.data + 'T00:00:00');
+    return d.getMonth() === m && d.getFullYear() === y;
+  });
+}
+
+function getTotalRendaMes(m, y) {
+  const fixo = getRendFixoMes().reduce((s, r) => s + parseFloat(r.valor || 0), 0);
+  const varr = getRendVarMes(m, y).reduce((s, r) => s + parseFloat(r.valor || 0), 0);
+  return { fixo, varr, total: fixo + varr };
+}
+
+function renderRendimentos() {
+  const m = S.mes, y = S.anoAtual !== undefined ? S.anoAtual : S.ano;
+  const { fixo, varr, total } = getTotalRendaMes(m, y);
+  const despTotal = getMes().reduce((s, l) => s + parseFloat(l.valor || 0), 0);
+  const saldo = total - despTotal;
+
+  // Atualiza labels mês
+  const lbl = `${MESES[m]} ${y}`;
+  const el1 = document.getElementById('lbl-mes-rend');
+  const el2 = document.getElementById('lbl-mes-rend2');
+  if (el1) el1.textContent = lbl;
+  if (el2) el2.textContent = lbl;
+
+  // Cards
+  document.getElementById('rend-cards').innerHTML = [
+    { lbl: 'Renda Total', val: fmt(total), sub: 'fixo + variável', cls: 'c-green' },
+    { lbl: 'Renda Fixa', val: fmt(fixo), sub: `${(S.rendasFixas||[]).length} fontes`, cls: '' },
+    { lbl: 'Renda Variável', val: fmt(varr), sub: `${getRendVarMes(m,y).length} lançamentos`, cls: 'c-blue' },
+    { lbl: 'Saldo do Mês', val: fmt(saldo), sub: 'renda - despesas', cls: saldo >= 0 ? 'c-green' : 'c-red' },
+  ].map(c => `<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
+
+  // Lista renda fixa
+  const fixas = S.rendasFixas || [];
+  document.getElementById('lista-rend-fixo').innerHTML = fixas.length ?
+    `<table><thead><tr><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor/mês</th><th></th></tr></thead><tbody>
+    ${fixas.map((r, i) => `<tr>
+      <td style="font-weight:600">${r.fonte || '—'}</td>
+      <td style="color:var(--text2)">${r.descricao || '—'}</td>
+      <td><span class="badge" style="background:var(--teal-d);color:var(--teal)">${r.categoria || '—'}</span></td>
+      <td class="td-val" style="color:var(--teal)">${fmt(r.valor)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="excluirRendFixo(${i})">✕</button></td>
+    </tr>`).join('')}</tbody></table>` :
+    '<div class="empty">Nenhuma renda fixa cadastrada.</div>';
+
+  // Tabela renda variável
+  const vars = getRendVarMes(m, y);
+  document.getElementById('tbl-rend-var').innerHTML = vars.length ?
+    `<table><thead><tr><th>Data</th><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead><tbody>
+    ${vars.map(r => `<tr>
+      <td style="color:var(--text2);font-size:12px">${fmtD(r.data)}</td>
+      <td style="font-weight:600">${r.fonte || '—'}</td>
+      <td style="color:var(--text2)">${r.descricao || '—'}</td>
+      <td><span class="badge" style="background:var(--blue-d);color:var(--blue)">${r.categoria || '—'}</span></td>
+      <td class="td-val" style="color:var(--teal)">${fmt(r.valor)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="excluirRendVar('${r.id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table>` :
+    '<div class="empty">Nenhum lançamento variável neste mês.</div>';
+}
+
+function abrirModalRendFixo() { document.getElementById('modal-rend-fixo').classList.add('open'); }
+function abrirModalRendVar() {
+  document.getElementById('rv-data').value = hoje();
+  document.getElementById('modal-rend-var').classList.add('open');
+}
+
+function salvarRendFixo() {
+  const fonte = document.getElementById('rf-fonte').value.trim();
+  const valor = parseFloat(document.getElementById('rf-valor').value);
+  if (!fonte || !valor) { toast('Preencha fonte e valor.', 'err'); return; }
+  if (!S.rendasFixas) S.rendasFixas = [];
+  S.rendasFixas.push({
+    id: Date.now().toString(),
+    fonte,
+    descricao: document.getElementById('rf-desc').value.trim(),
+    categoria: document.getElementById('rf-cat').value,
+    valor
+  });
+  salvarS();
+  fecharModal('modal-rend-fixo');
+  // limpa campos
+  ['rf-fonte','rf-desc','rf-valor'].forEach(id => document.getElementById(id).value = '');
+  renderRendimentos();
+  renderDash();
+  toast('Renda fixa cadastrada!', 'ok');
+  if (S.url) syncRendimentos();
+}
+
+function salvarRendVar() {
+  const fonte = document.getElementById('rv-fonte').value.trim();
+  const valor = parseFloat(document.getElementById('rv-valor').value);
+  const data  = document.getElementById('rv-data').value;
+  if (!fonte || !valor || !data) { toast('Preencha fonte, valor e data.', 'err'); return; }
+  if (!S.rendasVar) S.rendasVar = [];
+  S.rendasVar.push({
+    id: Date.now().toString(),
+    fonte,
+    descricao: document.getElementById('rv-desc').value.trim(),
+    categoria: document.getElementById('rv-cat').value,
+    valor,
+    data
+  });
+  salvarS();
+  fecharModal('modal-rend-var');
+  ['rv-fonte','rv-desc','rv-valor'].forEach(id => document.getElementById(id).value = '');
+  renderRendimentos();
+  renderDash();
+  toast('Renda variável lançada!', 'ok');
+  if (S.url) syncRendimentos();
+}
+
+function excluirRendFixo(idx) {
+  S.rendasFixas.splice(idx, 1);
+  salvarS();
+  renderRendimentos();
+  renderDash();
+  toast('Removida.', 'ok');
+}
+
+function excluirRendVar(id) {
+  S.rendasVar = S.rendasVar.filter(r => r.id !== id);
+  salvarS();
+  renderRendimentos();
+  renderDash();
+  toast('Removida.', 'ok');
+}
+
+async function syncRendimentos() {
+  if (!S.url) return;
+  try {
+    await fetch(S.url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveRendimentos', fixas: S.rendasFixas || [], variaveis: S.rendasVar || [] })
+    });
+  } catch(e) {}
+}
+
 // ── METAS ──
 function renderMetas(){
   const el = document.getElementById('lista-metas');
@@ -1145,6 +1408,8 @@ async function sync(silent){
       if(d.fixas) S.fixas = d.fixas;
       if(d.statusOverrides) S.statusOverrides = d.statusOverrides;
       if(d.pagamentos) S.pagamentos = d.pagamentos;
+      if(d.rendasFixas) S.rendasFixas = d.rendasFixas;
+      if(d.rendasVar) S.rendasVar = d.rendasVar;
       salvarS(); renderAll();
       if(!silent) toast('Sincronizado!','ok');
     }
