@@ -813,7 +813,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 
 // ── STATE ──
 let S = {
-  url:'', salario:0, empresa:'',
+  url:'https://script.google.com/macros/s/AKfycbzDHvm9V3fCWf0MdoJvsCIg5dcCOiy7OKnBeZ5wRxluXr2EwRlsJ_Q7PidmnMyPTdRgVQ/exec',
+  salario:0, empresa:'',
   lancamentos:[], fixas:[], metas:[],
   mes: new Date().getMonth(), ano: new Date().getFullYear(),
   darkMode:true, filtroDesp:'todos',
@@ -831,6 +832,7 @@ window.onload = () => {
     document.getElementById('mf-parc-wrap').style.display = document.getElementById('mf-tipo').value === 'PARCELADO' ? 'block' : 'none';
   });
   if (!S.url) document.getElementById('banner').style.display = 'block';
+  else document.getElementById('banner').style.display = 'none';
   updMesLbl();
   renderAll();
   if (S.url) sync(true);
