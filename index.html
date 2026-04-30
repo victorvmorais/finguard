@@ -492,33 +492,39 @@ tbody td{padding:10px 13px;}
   <div class="page" id="page-rendimentos">
     <div class="sec-row">
       <h2 class="sec-title">Rendimentos</h2>
-      <div class="mes-nav">
-        <button onclick="chMes(-1)">&#8592;</button>
-        <span id="lbl-mes-rend">—</span>
-        <button onclick="chMes(1)">&#8594;</button>
-      </div>
     </div>
 
     <!-- Cards resumo -->
     <div class="cards-grid" id="rend-cards" style="margin-bottom:24px"></div>
 
-    <!-- Renda fixa -->
+    <!-- Renda fixa — sem navegação de mês, é permanente -->
     <div class="chart-card" style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="margin:0">Renda Fixa</h3>
+        <div>
+          <h3 style="margin:0">Renda Fixa</h3>
+          <p style="font-size:11px;color:var(--text2);margin-top:3px">Cadastre uma vez. Soma todo mês automaticamente.</p>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="abrirModalRendFixo()">+ Cadastrar</button>
       </div>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Aparece automaticamente todo mês. Cadastre uma vez.</p>
       <div id="lista-rend-fixo"><div class="empty">Nenhuma renda fixa cadastrada.</div></div>
     </div>
 
-    <!-- Renda variável do mês -->
+    <!-- Renda variável — navega por mês -->
     <div class="chart-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="margin:0">Renda Variável — <span id="lbl-mes-rend2" style="color:var(--accent)"></span></h3>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalRendVar()">+ Lançar</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <h3 style="margin:0">Renda Variável</h3>
+          <p style="font-size:11px;color:var(--text2);margin-top:3px">Freelances, bônus, extras. Lançado por mês.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="mes-nav">
+            <button onclick="chMes(-1)">&#8592;</button>
+            <span id="lbl-mes-rend2" style="font-size:13px;font-weight:700;min-width:130px;text-align:center">—</span>
+            <button onclick="chMes(1)">&#8594;</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalRendVar()">+ Lançar</button>
+        </div>
       </div>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Freelances, bônus, extras. Lançado por mês.</p>
       <div class="tbl-wrap" id="tbl-rend-var"></div>
     </div>
   </div>
@@ -933,7 +939,9 @@ function renderDash(){
   const pend  = total - totalPagoReal;
   const saldo = rendaTotal - totalPagoReal;
   const pct   = rendaTotal > 0 ? (totalPagoReal/rendaTotal*100) : 0;
-  const rendaLabel = rendaTotal !== S.salario ? `Fixa ${fmt(fixo)} + Var ${fmt(varr)}` : (S.empresa||'configurado');
+  const rendaLabel = (S.rendasFixas||[]).length > 0
+    ? `Fixo ${fmt(fixo)} + Var ${fmt(varr)}`
+    : (S.empresa ? `${S.empresa} (renda fixa não cadastrada)` : 'Configure em Rendimentos');
 
   document.getElementById('dash-cards').innerHTML = [
     {lbl:'Renda do Mês',   val:fmt(rendaTotal),    sub:rendaLabel, cls:'c-green'},
@@ -1205,27 +1213,24 @@ function getTotalRendaMes(m, y) {
 }
 
 function renderRendimentos() {
-  const m = S.mes, y = S.anoAtual !== undefined ? S.anoAtual : S.ano;
+  const m = S.mes, y = S.ano;
   const { fixo, varr, total } = getTotalRendaMes(m, y);
   const despTotal = getMes().reduce((s, l) => s + parseFloat(l.valor || 0), 0);
   const saldo = total - despTotal;
 
-  // Atualiza labels mês
-  const lbl = `${MESES[m]} ${y}`;
-  const el1 = document.getElementById('lbl-mes-rend');
+  // Atualiza label mês só na variável
   const el2 = document.getElementById('lbl-mes-rend2');
-  if (el1) el1.textContent = lbl;
-  if (el2) el2.textContent = lbl;
+  if (el2) el2.textContent = `${MESES[m]} ${y}`;
 
-  // Cards
+  // Cards — renda fixa não depende do mês
   document.getElementById('rend-cards').innerHTML = [
-    { lbl: 'Renda Total', val: fmt(total), sub: 'fixo + variável', cls: 'c-green' },
-    { lbl: 'Renda Fixa', val: fmt(fixo), sub: `${(S.rendasFixas||[]).length} fontes`, cls: '' },
-    { lbl: 'Renda Variável', val: fmt(varr), sub: `${getRendVarMes(m,y).length} lançamentos`, cls: 'c-blue' },
-    { lbl: 'Saldo do Mês', val: fmt(saldo), sub: 'renda - despesas', cls: saldo >= 0 ? 'c-green' : 'c-red' },
+    { lbl: 'Renda Total do Mês', val: fmt(total), sub: 'fixo + variável', cls: 'c-green' },
+    { lbl: 'Renda Fixa',         val: fmt(fixo),  sub: `${(S.rendasFixas||[]).length} fonte(s)`, cls: '' },
+    { lbl: `Variável — ${MESES[m]}`, val: fmt(varr), sub: `${getRendVarMes(m,y).length} lançamento(s)`, cls: 'c-blue' },
+    { lbl: 'Saldo do Mês',       val: fmt(saldo), sub: 'renda - despesas previstas', cls: saldo >= 0 ? 'c-green' : 'c-red' },
   ].map(c => `<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
 
-  // Lista renda fixa
+  // Lista renda fixa — sem filtro de mês
   const fixas = S.rendasFixas || [];
   document.getElementById('lista-rend-fixo').innerHTML = fixas.length ?
     `<table><thead><tr><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor/mês</th><th></th></tr></thead><tbody>
@@ -1238,7 +1243,7 @@ function renderRendimentos() {
     </tr>`).join('')}</tbody></table>` :
     '<div class="empty">Nenhuma renda fixa cadastrada.</div>';
 
-  // Tabela renda variável
+  // Tabela renda variável — filtrada pelo mês selecionado
   const vars = getRendVarMes(m, y);
   document.getElementById('tbl-rend-var').innerHTML = vars.length ?
     `<table><thead><tr><th>Data</th><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead><tbody>
@@ -1250,7 +1255,7 @@ function renderRendimentos() {
       <td class="td-val" style="color:var(--teal)">${fmt(r.valor)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="excluirRendVar('${r.id}')">✕</button></td>
     </tr>`).join('')}</tbody></table>` :
-    '<div class="empty">Nenhum lançamento variável neste mês.</div>';
+    '<div class="empty" style="padding:28px">Nenhum lançamento variável em ' + MESES[m] + '.</div>';
 }
 
 function abrirModalRendFixo() { document.getElementById('modal-rend-fixo').classList.add('open'); }
@@ -1310,6 +1315,7 @@ function excluirRendFixo(idx) {
   renderRendimentos();
   renderDash();
   toast('Removida.', 'ok');
+  if (S.url) syncRendimentos();
 }
 
 function excluirRendVar(id) {
@@ -1318,6 +1324,7 @@ function excluirRendVar(id) {
   renderRendimentos();
   renderDash();
   toast('Removida.', 'ok');
+  if (S.url) syncRendimentos();
 }
 
 async function syncRendimentos() {
@@ -1404,12 +1411,20 @@ async function sync(silent){
     const r = await fetch(S.url+'?action=getAll');
     const d = await r.json();
     if(d.lancamentos){
-      S.lancamentos = d.lancamentos;
+      // Merge: preserva dados locais que ainda não foram para a planilha
+      // Lançamentos: usa planilha como base, adiciona locais que não existem lá
+      const idsNaBase = new Set(d.lancamentos.map(l => l.id));
+      const locaisFaltando = S.lancamentos.filter(l => !idsNaBase.has(l.id));
+      S.lancamentos = [...d.lancamentos, ...locaisFaltando];
+
       if(d.fixas) S.fixas = d.fixas;
-      if(d.statusOverrides) S.statusOverrides = d.statusOverrides;
-      if(d.pagamentos) S.pagamentos = d.pagamentos;
-      if(d.rendasFixas) S.rendasFixas = d.rendasFixas;
-      if(d.rendasVar) S.rendasVar = d.rendasVar;
+      if(d.statusOverrides) S.statusOverrides = {...(S.statusOverrides||{}), ...d.statusOverrides};
+      if(d.pagamentos) S.pagamentos = {...(S.pagamentos||{}), ...d.pagamentos};
+
+      // Rendimentos: preserva locais se planilha vier vazia
+      if(d.rendasFixas && d.rendasFixas.length > 0) S.rendasFixas = d.rendasFixas;
+      if(d.rendasVar && d.rendasVar.length > 0) S.rendasVar = d.rendasVar;
+
       salvarS(); renderAll();
       if(!silent) toast('Sincronizado!','ok');
     }
