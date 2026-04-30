@@ -246,6 +246,37 @@ tbody td{padding:10px 13px;}
 /* ── EMPTY ── */
 .empty{text-align:center;padding:44px 20px;color:var(--text2);font-size:13px;}
 
+/* ── PAGAMENTO PARCIAL ── */
+.pag-wrap{display:flex;align-items:center;gap:6px;min-width:160px;}
+.pag-input{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;
+  padding:5px 8px;width:90px;outline:none;transition:border-color .14s;
+}
+.pag-input:focus{border-color:var(--accent);}
+.pag-info{font-size:11px;color:var(--text2);white-space:nowrap;}
+.pag-restante{font-size:11px;font-weight:700;}
+.pag-restante.ok{color:var(--teal);}
+.pag-restante.parcial{color:var(--amber);}
+.pag-restante.zero{color:var(--red);}
+.btn-pag{padding:5px 9px;border-radius:var(--r-sm);font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--accent-d);color:var(--accent);transition:all .14s;font-family:'DM Sans',sans-serif;}
+.btn-pag:hover{background:var(--accent);color:#111;}
+
+/* ── MODAL EDIÇÃO ── */
+.modal-edit .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.modal-edit .fg{display:flex;flex-direction:column;gap:4px;}
+.modal-edit .fg label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.modal-edit .fg input,.modal-edit .fg select{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;
+  outline:none;transition:border-color .14s;width:100%;
+}
+.modal-edit .fg input:focus,.modal-edit .fg select:focus{border-color:var(--accent);}
+.modal-edit .fg select option{background:var(--bg2);}
+.modal-edit .span2{grid-column:span 2;}
+.btn-edit{padding:4px 9px;border-radius:var(--r-sm);font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--blue-d);color:var(--blue);transition:all .14s;font-family:'DM Sans',sans-serif;}
+.btn-edit:hover{background:var(--blue);color:#fff;}
+
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%);}
@@ -560,6 +591,65 @@ tbody td{padding:10px 13px;}
   </div>
 </div>
 
+<!-- MODAL: Editar Lançamento -->
+<div class="backdrop" id="modal-edit">
+  <div class="modal modal-edit">
+    <h3>Editar Lançamento</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div class="fg">
+        <label>Data</label>
+        <input type="date" id="edit-data">
+      </div>
+      <div class="fg">
+        <label>Valor (R$)</label>
+        <input type="number" id="edit-valor" step="0.01">
+      </div>
+      <div class="fg">
+        <label>Tipo</label>
+        <select id="edit-tipo">
+          <option value="FIXO">Fixo</option>
+          <option value="CARTÃO">Cartão</option>
+          <option value="PARCELADO">Parcelado</option>
+          <option value="PAG ÚNICO">Pag Único</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Categoria</label>
+        <select id="edit-cat">
+          <option>Moradia</option><option>Telefone</option><option>Alimentação</option>
+          <option>Transporte</option><option>Saúde</option><option>Educação</option>
+          <option>Lazer</option><option>Vestuário</option><option>Assinaturas</option>
+          <option>Empréstimo</option><option>Investimento</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="fg span2">
+        <label>Identificação / Empresa</label>
+        <input type="text" id="edit-ident">
+      </div>
+      <div class="fg span2">
+        <label>Descrição</label>
+        <input type="text" id="edit-desc">
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="edit-status">
+          <option value="PENDENTE">Pendente</option>
+          <option value="PAGO">Pago</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Observação</label>
+        <input type="text" id="edit-obs">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-edit')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicao()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Nova Meta -->
 <div class="backdrop" id="modal-meta">
   <div class="modal">
@@ -719,17 +809,21 @@ function renderAll(){ renderDash(); renderDesp(); renderFixas(); renderMetas(); 
 function renderDash(){
   const lancs = getMes();
   const total = lancs.reduce((s,l) => s+parseFloat(l.valor||0),0);
-  const pagos = lancs.filter(l => getStatus(l)==='PAGO').reduce((s,l) => s+parseFloat(l.valor||0),0);
-  const pend  = total - pagos;
-  const saldo = S.salario - pagos;
-  const pct   = S.salario > 0 ? (pagos/S.salario*100) : 0;
+  // Pagamento real: PAGO = valor total; parcial = valor digitado
+  const totalPagoReal = lancs.reduce((s,l) => {
+    if (getStatus(l)==='PAGO') return s + parseFloat(l.valor||0);
+    return s + getPago(l.id);
+  }, 0);
+  const pend  = total - totalPagoReal;
+  const saldo = S.salario - totalPagoReal;
+  const pct   = S.salario > 0 ? (totalPagoReal/S.salario*100) : 0;
 
   document.getElementById('dash-cards').innerHTML = [
-    {lbl:'Renda Mensal', val:fmt(S.salario), sub:S.empresa||'configurado', cls:''},
-    {lbl:'Total Previsto', val:fmt(total), sub:`${lancs.length} despesas`, cls:'c-amber'},
-    {lbl:'Já Pago', val:fmt(pagos), sub:`${pct.toFixed(1)}% da renda`, cls:'c-purple'},
-    {lbl:'Pendente', val:fmt(pend), sub:`${lancs.filter(l=>getStatus(l)==='PENDENTE').length} itens`, cls:'c-red'},
-    {lbl:'Saldo Estimado', val:fmt(saldo), sub:'renda - pago', cls: saldo>=0?'c-green':'c-red'}
+    {lbl:'Renda Mensal',   val:fmt(S.salario),      sub:S.empresa||'configurado', cls:''},
+    {lbl:'Total Previsto', val:fmt(total),           sub:`${lancs.length} despesas`, cls:'c-amber'},
+    {lbl:'Já Pago',        val:fmt(totalPagoReal),   sub:`${pct.toFixed(1)}% da renda`, cls:'c-purple'},
+    {lbl:'Pendente',       val:fmt(pend),            sub:`${lancs.filter(l=>getStatus(l)==='PENDENTE'&&getPago(l.id)<parseFloat(l.valor||0)).length} itens`, cls:'c-red'},
+    {lbl:'Saldo Estimado', val:fmt(saldo),           sub:'renda - pago', cls: saldo>=0?'c-green':'c-red'}
   ].map(c=>`<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
 
   // bars por categoria
@@ -826,20 +920,36 @@ function renderDesp(){
   });
 
   document.getElementById('tbl-desp').innerHTML = lista.length ?
-    `<table><thead><tr><th>Identificação</th><th>Descrição</th><th>Tipo</th><th>Parcela</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
-    ${lista.map(l=>`<tr>
-      <td style="font-weight:600">${l.identificacao||'—'}</td>
-      <td><span style="color:var(--text2)">${l.descricao||'—'}</span></td>
-      <td><span class="badge ${TIPO_COR[l.tipo]||''}">${l.tipo||'—'}</span></td>
-      <td style="color:var(--text2);font-size:12px">${l.parcelas?`${l.parcelaAtual}/${l.parcelas}`:'—'}</td>
-      <td class="td-val">${fmt(l.valor)}</td>
-      <td>
-        <button class="status-btn ${getStatus(l)==='PAGO'?'pago':'pendente'}" onclick="toggleStatus('${l.id}')">
-          ${getStatus(l)}
-        </button>
-      </td>
-      <td>${!l.isFixaRef?`<button class="btn btn-danger btn-sm" onclick="excluir('${l.id}')">✕</button>`:''}</td>
-    </tr>`).join('')}</tbody></table>` :
+    `<table><thead><tr><th>Identificação</th><th>Tipo</th><th>Parcela</th><th>Valor Total</th><th>Já Pago</th><th>Restante</th><th>Status</th><th></th></tr></thead><tbody>
+    ${lista.map(l=>{
+      const pago = getPago(l.id);
+      const total = parseFloat(l.valor||0);
+      const restante = total - pago;
+      const clsRest = pago===0?'ok':restante<=0?'zero':'parcial';
+      return `<tr>
+        <td><span style="font-weight:600">${l.identificacao||'—'}</span><br><span class="td-obs">${l.descricao||''}</span></td>
+        <td><span class="badge ${TIPO_COR[l.tipo]||''}">${l.tipo||'—'}</span></td>
+        <td style="color:var(--text2);font-size:12px">${l.parcelas?`${l.parcelaAtual}/${l.parcelas}`:'—'}</td>
+        <td class="td-val">${fmt(l.valor)}</td>
+        <td>
+          <div class="pag-wrap">
+            <input class="pag-input" type="number" value="${pago||''}" placeholder="0,00" min="0" max="${total}" step="0.01"
+              onchange="registrarPagamento('${l.id}', this.value, ${total})"
+              onblur="registrarPagamento('${l.id}', this.value, ${total})">
+          </div>
+        </td>
+        <td><span class="pag-restante ${clsRest}">${restante<=0?'✓ Quitado':fmt(restante)}</span></td>
+        <td>
+          <button class="status-btn ${getStatus(l)==='PAGO'?'pago':'pendente'}" onclick="toggleStatus('${l.id}')">
+            ${getStatus(l)}
+          </button>
+        </td>
+        <td style="display:flex;gap:4px;align-items:center">
+          <button class="btn-edit" onclick="abrirEdicao('${l.id}')">✎</button>
+          ${!l.isFixaRef?`<button class="btn btn-danger btn-sm" onclick="excluir('${l.id}')">✕</button>`:''}
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table>` :
     '<div class="empty">Nenhuma despesa encontrada.</div>';
 }
 
@@ -1033,6 +1143,8 @@ async function sync(silent){
     if(d.lancamentos){
       S.lancamentos = d.lancamentos;
       if(d.fixas) S.fixas = d.fixas;
+      if(d.statusOverrides) S.statusOverrides = d.statusOverrides;
+      if(d.pagamentos) S.pagamentos = d.pagamentos;
       salvarS(); renderAll();
       if(!silent) toast('Sincronizado!','ok');
     }
@@ -1041,6 +1153,81 @@ async function sync(silent){
 async function enviar(lanc){
   if(!S.url) return;
   try{ await fetch(S.url,{method:'POST',body:JSON.stringify({action:'addLancamento',data:lanc})}); }catch(e){}
+}
+
+// ── PAGAMENTO PARCIAL ──
+function getPago(id) {
+  return parseFloat((S.pagamentos||{})[id] || 0);
+}
+
+function registrarPagamento(id, val, total) {
+  if (!S.pagamentos) S.pagamentos = {};
+  const v = Math.min(Math.max(parseFloat(val)||0, 0), total);
+  S.pagamentos[id] = v;
+  salvarS();
+  renderDesp();
+  renderDash();
+  if (S.url) enviarPagamento(id, v);
+}
+
+async function enviarPagamento(id, valor) {
+  if (!S.url) return;
+  try {
+    await fetch(S.url, {method:'POST', body:JSON.stringify({action:'setPagamento', id, valor})});
+  } catch(e){}
+}
+
+// ── EDIÇÃO ──
+function abrirEdicao(id) {
+  const l = S.lancamentos.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-data').value = l.data || '';
+  document.getElementById('edit-valor').value = l.valor || '';
+  document.getElementById('edit-tipo').value = l.tipo || 'FIXO';
+  document.getElementById('edit-cat').value = l.categoria || '';
+  document.getElementById('edit-ident').value = l.identificacao || '';
+  document.getElementById('edit-desc').value = l.descricao || '';
+  document.getElementById('edit-status').value = getStatus(l);
+  document.getElementById('edit-obs').value = l.observacao || '';
+  document.getElementById('modal-edit').classList.add('open');
+}
+
+function salvarEdicao() {
+  const id = document.getElementById('edit-id').value;
+  const idx = S.lancamentos.findIndex(x => x.id === id);
+  if (idx === -1) { toast('Lançamento não encontrado.','err'); return; }
+
+  const novoStatus = document.getElementById('edit-status').value;
+  S.lancamentos[idx] = {
+    ...S.lancamentos[idx],
+    data:          document.getElementById('edit-data').value,
+    valor:         parseFloat(document.getElementById('edit-valor').value)||0,
+    tipo:          document.getElementById('edit-tipo').value,
+    categoria:     document.getElementById('edit-cat').value,
+    identificacao: document.getElementById('edit-ident').value.trim(),
+    descricao:     document.getElementById('edit-desc').value.trim(),
+    observacao:    document.getElementById('edit-obs').value.trim(),
+  };
+
+  // Atualiza status override
+  if (!S.statusOverrides) S.statusOverrides = {};
+  S.statusOverrides[id] = novoStatus;
+
+  salvarS();
+  fecharModal('modal-edit');
+  renderDash();
+  renderDesp();
+  toast('Lançamento atualizado!','ok');
+
+  if (S.url) atualizarNaBase(S.lancamentos[idx]);
+}
+
+async function atualizarNaBase(lanc) {
+  if (!S.url) return;
+  try {
+    await fetch(S.url, {method:'POST', body:JSON.stringify({action:'updateLancamento', data:lanc})});
+  } catch(e){}
 }
 
 // ── MODAL ──
