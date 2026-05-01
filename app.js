@@ -468,6 +468,15 @@ async function regPagamento(id,val,total,isFixaRef){
 // ══════════════════════════════════════════
 function onTipo(){document.getElementById('extra-parcelas').style.display=document.getElementById('f-tipo').value==='PARCELADO'?'block':'none';}
 
+function addMonths(dateStr, months) {
+  if (months === 0) return dateStr;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1 + months, d);
+  // Se o dia transbordou (ex: 31/jan + 1 mês → usa último dia de fev)
+  if (date.getDate() !== d) date.setDate(0);
+  return date.toISOString().split('T')[0];
+}
+
 async function salvar(){
   const data=document.getElementById('f-data').value;
   const valor=parseFloat(document.getElementById('f-valor').value);
@@ -480,9 +489,31 @@ async function salvar(){
   const parcAt=parseInt(document.getElementById('f-parc-at').value)||1;
   const parcTot=tipo==='PARCELADO'?parseInt(document.getElementById('f-parc-tot').value)||null:null;
   if(!data||!valor||!cat){toast('Preencha data, valor e categoria.','err');return;}
-  const lanc={id:Date.now().toString(),data,valor,tipo,categoria:cat,identificacao:ident,descricao:desc,status,observacao:obs,parcelas:parcTot,parcela_atual:parcAt,valor_pago:0};
-  try{await sbInsert('lancamentos',lanc);S.lancamentos.push(lanc);limpar();toast('Lançamento adicionado!','ok');renderDash();renderDesp();}
-  catch(e){toast('Erro: '+e.message,'err');}
+
+  if(tipo==='PARCELADO'&&parcTot&&parcTot>=parcAt){
+    const baseId=Date.now();
+    const todos=[];
+    for(let i=parcAt;i<=parcTot;i++){
+      todos.push({
+        id:`${baseId}_p${i}`,
+        data:addMonths(data,i-parcAt),
+        valor,tipo,categoria:cat,identificacao:ident,descricao:desc,
+        status:i===parcAt?status:'PENDENTE',
+        observacao:obs,parcelas:parcTot,parcela_atual:i,valor_pago:0
+      });
+    }
+    try{
+      await Promise.all(todos.map(l=>sbInsert('lancamentos',l)));
+      S.lancamentos.push(...todos);
+      limpar();
+      toast(`${todos.length} parcelas adicionadas (${parcAt}/${parcTot} → ${parcTot}/${parcTot})!`,'ok');
+      renderDash();renderDesp();
+    }catch(e){toast('Erro: '+e.message,'err');}
+  } else {
+    const lanc={id:Date.now().toString(),data,valor,tipo,categoria:cat,identificacao:ident,descricao:desc,status,observacao:obs,parcelas:parcTot,parcela_atual:parcAt,valor_pago:0};
+    try{await sbInsert('lancamentos',lanc);S.lancamentos.push(lanc);limpar();toast('Lançamento adicionado!','ok');renderDash();renderDesp();}
+    catch(e){toast('Erro: '+e.message,'err');}
+  }
 }
 
 function limpar(){
