@@ -12,14 +12,14 @@
 
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
-  <div class="login-box">
+  <form class="login-box" onsubmit="event.preventDefault(); fazerLogin();">
     <h1>Finguard</h1>
     <p>Controle Financeiro Pessoal</p>
-    <div class="fg"><label>E-mail</label><input type="email" id="lg-email" placeholder="seu@email.com" autocomplete="email"></div>
-    <div class="fg"><label>Senha</label><input type="password" id="lg-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
+    <div class="fg"><label for="lg-email">E-mail</label><input type="email" id="lg-email" name="email" placeholder="seu@email.com" autocomplete="username" required></div>
+    <div class="fg"><label for="lg-senha">Senha</label><input type="password" id="lg-senha" name="password" placeholder="••••••••" autocomplete="current-password" required></div>
     <p class="login-err" id="lg-err">E-mail ou senha incorretos.</p>
-    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
-  </div>
+    <button type="submit" class="login-btn">Entrar</button>
+  </form>
 </div>
 
 <!-- APP -->
@@ -40,10 +40,6 @@
     <div class="nav-item" data-page="despesas" onclick="goTo('despesas',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
       Despesas do Mês
-    </div>
-    <div class="nav-item" data-page="lancamento" onclick="goTo('lancamento',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      Novo Lançamento
     </div>
     <div class="nav-item" data-page="fixas" onclick="goTo('fixas',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -129,10 +125,13 @@
   <div class="page" id="page-despesas">
     <div class="sec-row">
       <h2 class="sec-title">Despesas do Mês</h2>
-      <div class="mes-nav">
-        <button onclick="chMes(-1)">&#8592;</button>
-        <span id="lbl-mes2">—</span>
-        <button onclick="chMes(1)">&#8594;</button>
+      <div style="display:flex;align-items:center;gap:15px">
+        <button class="btn btn-primary btn-sm" onclick="abrirModal('modal-lancamento')">+ Novo Lançamento</button>
+        <div class="mes-nav">
+          <button onclick="chMes(-1)">&#8592;</button>
+          <span id="lbl-mes2">—</span>
+          <button onclick="chMes(1)">&#8594;</button>
+        </div>
       </div>
     </div>
     <div class="cards-grid" id="desp-cards"></div>
@@ -146,42 +145,6 @@
       <button class="f-btn" onclick="fDesp('PAG ÚNICO',this)">Pag Único</button>
     </div>
     <div class="chart-card" style="padding:0;overflow:hidden"><div class="tbl-wrap" id="tbl-desp"></div></div>
-  </div>
-
-  <!-- NOVO LANÇAMENTO -->
-  <div class="page" id="page-lancamento">
-    <h2 class="sec-title" style="margin-bottom:18px">Novo Lançamento</h2>
-    <div class="card-form">
-      <div class="form-grid">
-        <div class="fg"><label>Data</label><input type="date" id="f-data"></div>
-        <div class="fg"><label>Valor (R$)</label><input type="number" id="f-valor" placeholder="0,00" step="0.01" min="0"></div>
-        <div class="fg"><label>Tipo</label>
-          <select id="f-tipo" onchange="onTipo()">
-            <option value="FIXO">Fixo</option><option value="CARTÃO">Cartão</option>
-            <option value="PARCELADO">Parcelado</option><option value="PAG ÚNICO">Pag Único</option>
-          </select>
-        </div>
-        <div class="fg"><label>Categoria</label><select id="f-cat"></select></div>
-        <div class="fg span2"><label>Identificação / Empresa</label><input type="text" id="f-ident" placeholder="Ex: Nubank, Aluguel"></div>
-        <div class="fg span2"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Fatura Pessoa Física"></div>
-      </div>
-      <div id="extra-parcelas" style="display:none">
-        <div class="form-grid">
-          <div class="fg"><label>Parcela atual</label><input type="number" id="f-parc-at" value="1" min="1"></div>
-          <div class="fg"><label>Total de parcelas</label><input type="number" id="f-parc-tot" placeholder="Ex: 12" min="2"></div>
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="fg"><label>Status</label>
-          <select id="f-status"><option value="PENDENTE">Pendente</option><option value="PAGO">Pago</option></select>
-        </div>
-        <div class="fg span2"><label>Observação</label><input type="text" id="f-obs" placeholder="Nota livre"></div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button class="btn btn-primary" onclick="salvar()">+ Adicionar</button>
-        <button class="btn btn-ghost" onclick="limpar()">Limpar</button>
-      </div>
-    </div>
   </div>
 
   <!-- DESPESAS FIXAS -->
@@ -228,6 +191,41 @@
 </div><!-- /app-shell -->
 
 <!-- MODAIS -->
+<div class="backdrop" id="modal-lancamento">
+  <div class="modal">
+    <h3>Novo Lançamento</h3>
+    <div class="form-grid">
+      <div class="fg"><label>Data</label><input type="date" id="f-data"></div>
+      <div class="fg"><label>Valor (R$)</label><input type="number" id="f-valor" placeholder="0,00" step="0.01" min="0"></div>
+      <div class="fg"><label>Tipo</label>
+        <select id="f-tipo" onchange="onTipo()">
+          <option value="FIXO">Fixo</option><option value="CARTÃO">Cartão</option>
+          <option value="PARCELADO">Parcelado</option><option value="PAG ÚNICO">Pag Único</option>
+        </select>
+      </div>
+      <div class="fg"><label>Categoria</label><select id="f-cat"></select></div>
+      <div class="fg span2"><label>Identificação / Empresa</label><input type="text" id="f-ident" placeholder="Ex: Nubank, Aluguel"></div>
+      <div class="fg span2"><label>Descrição</label><input type="text" id="f-desc" placeholder="Ex: Fatura Pessoa Física"></div>
+    </div>
+    <div id="extra-parcelas" style="display:none">
+      <div class="form-grid">
+        <div class="fg"><label>Parcela atual</label><input type="number" id="f-parc-at" value="1" min="1"></div>
+        <div class="fg"><label>Total de parcelas</label><input type="number" id="f-parc-tot" placeholder="Ex: 12" min="2"></div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="fg"><label>Status</label>
+        <select id="f-status"><option value="PENDENTE">Pendente</option><option value="PAGO">Pago</option></select>
+      </div>
+      <div class="fg span2"><label>Observação</label><input type="text" id="f-obs" placeholder="Nota livre"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-lancamento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvar()">+ Adicionar</button>
+    </div>
+  </div>
+</div>
+
 <div class="backdrop" id="modal-fixa">
   <div class="modal">
     <h3>Cadastrar Despesa Fixa</h3>

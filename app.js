@@ -257,6 +257,10 @@ function goTo(pg,el){
   (el||document.querySelector(`[data-page="${pg}"]`))?.classList.add('active');
   closeSB();
   const fns={['visao-geral']:renderDash,despesas:renderDesp,rendimentos:renderRendimentos,fixas:renderFixas,metas:renderMetas,config:()=>{renderCfgCats();}};
+  if(pg === 'lancamento') {
+    abrirModal('modal-lancamento');
+    return;
+  }
   fns[pg]?.();
 }
 function openSB(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('show'); }
@@ -487,35 +491,41 @@ async function salvar(){
   const status=document.getElementById('f-status').value;
   const obs=document.getElementById('f-obs').value.trim();
   const parcAt=parseInt(document.getElementById('f-parc-at').value)||1;
-  const parcTot=tipo==='PARCELADO'?parseInt(document.getElementById('f-parc-tot').value)||null:null;
-  if(!data||!valor||!cat){toast('Preencha data, valor e categoria.','err');return;}
+  const parcTot=parseInt(document.getElementById('f-parc-tot').value)||null;
 
-  if(tipo==='PARCELADO'&&parcTot&&parcTot>=parcAt){
-    const baseId=Date.now();
-    const todos=[];
-    for(let i=parcAt;i<=parcTot;i++){
-      todos.push({
-        id:`${baseId}_p${i}`,
-        data:addMonths(data,i-parcAt),
-        valor,tipo,categoria:cat,identificacao:ident,descricao:desc,
-        status:i===parcAt?status:'PENDENTE',
-        observacao:obs,parcelas:parcTot,parcela_atual:i,valor_pago:0
-      });
-    }
-    try{
+  if(!data||!valor||!ident){toast('Preencha data, valor e identificação.','err');return;}
+
+  try {
+    if(tipo==='PARCELADO' && parcTot){
+      const todos=[];
+      for(let i=parcAt;i<=parcTot;i++){
+        const dt=new Date(data+'T00:00:00');
+        dt.setMonth(dt.getMonth()+(i-parcAt));
+        todos.push({
+          id:Date.now().toString()+i,
+          data:dt.toISOString().split('T')[0],
+          valor:valor/parcTot,
+          tipo,categoria:cat,identificacao:ident,descricao:desc,status,
+          observacao:obs,parcelas:parcTot,parcela_atual:i,valor_pago:0
+        });
+      }
       await Promise.all(todos.map(l=>sbInsert('lancamentos',l)));
       S.lancamentos.push(...todos);
-      limpar();
-      toast(`${todos.length} parcelas adicionadas (${parcAt}/${parcTot} → ${parcTot}/${parcTot})!`,'ok');
-      renderDash();renderDesp();
-    }catch(e){toast('Erro: '+e.message,'err');}
-  } else {
-    const lanc={id:Date.now().toString(),data,valor,tipo,categoria:cat,identificacao:ident,descricao:desc,status,observacao:obs,parcelas:parcTot,parcela_atual:parcAt,valor_pago:0};
-    try{await sbInsert('lancamentos',lanc);S.lancamentos.push(lanc);limpar();toast('Lançamento adicionado!','ok');renderDash();renderDesp();}
-    catch(e){toast('Erro: '+e.message,'err');}
+      toast(`${todos.length} parcelas adicionadas!`,'ok');
+    } else {
+      const lanc={id:Date.now().toString(),data,valor,tipo,categoria:cat,identificacao:ident,descricao:desc,status,observacao:obs,parcelas:parcTot,parcela_atual:parcAt,valor_pago:0};
+      await sbInsert('lancamentos',lanc);
+      S.lancamentos.push(lanc);
+      toast('Lançamento adicionado!','ok');
+    }
+    limpar();
+    fecharModal('modal-lancamento');
+    renderDash();
+    renderDesp();
+  } catch(e) {
+    toast('Erro: '+e.message,'err');
   }
 }
-
 function limpar(){
   ['f-valor','f-ident','f-desc','f-obs'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-cat').value='';
@@ -791,6 +801,7 @@ async function excluirMeta(id){
 function fmt(v){return 'R$ '+parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtD(d){if(!d)return '—';const p=d.split('-');return `${p[2]}/${p[1]}`;}
 function hoje(){return new Date().toISOString().split('T')[0];}
-function abrirModal(id){document.getElementById(id).classList.add('open');}
-function fecharModal(id){document.getElementById(id).classList.remove('open');}
+
+function abrirModal(id){ document.getElementById(id).classList.add('open'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('open'); }
 function toast(msg,type){const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),3200);}
