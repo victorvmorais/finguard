@@ -504,14 +504,14 @@ async function salvar(){
         todos.push({
           id:Date.now().toString()+i,
           data:dt.toISOString().split('T')[0],
-          valor:valor/parcTot,
+          valor:valor,
           tipo,categoria:cat,identificacao:ident,descricao:desc,status,
           observacao:obs,parcelas:parcTot,parcela_atual:i,valor_pago:0
         });
       }
       await Promise.all(todos.map(l=>sbInsert('lancamentos',l)));
       S.lancamentos.push(...todos);
-      toast(`${todos.length} parcelas adicionadas!`,'ok');
+      toast(`${todos.length} parcelas de ${fmt(valor)} adicionadas!`,'ok');
     } else {
       const lanc={id:Date.now().toString(),data,valor,tipo,categoria:cat,identificacao:ident,descricao:desc,status,observacao:obs,parcelas:parcTot,parcela_atual:parcAt,valor_pago:0};
       await sbInsert('lancamentos',lanc);
