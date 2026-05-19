@@ -584,6 +584,31 @@ tbody td{padding:10px 13px;}
       </div>
     </div>
     <div class="card-form">
+      <h2>Backup e Restauração</h2>
+      <div class="sub-txt">Exporte todos os seus dados em Excel. Guarde o arquivo para restaurar quando precisar.</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+        <!-- EXPORTAR -->
+        <div style="flex:1;min-width:220px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">📥 Exportar dados</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Baixa um arquivo Excel com todos os lançamentos, rendas, fixas e metas.</div>
+          <button class="btn btn-primary" onclick="exportarExcel()">⬇ Baixar backup Excel</button>
+        </div>
+
+        <!-- IMPORTAR -->
+        <div style="flex:1;min-width:220px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">📤 Restaurar dados</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Suba o arquivo Excel exportado anteriormente para restaurar tudo no banco.</div>
+          <label style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r-sm);cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+            ⬆ Selecionar arquivo
+            <input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importarExcel(this)">
+          </label>
+          <div id="import-status" style="margin-top:10px;font-size:12px;color:var(--teal)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-form">
       <h2>Dados</h2>
       <div class="sub-txt">Recarrega todos os dados do Supabase.</div>
       <button class="btn btn-ghost" onclick="loadAll(true)">↻ Sincronizar agora</button>
@@ -731,6 +756,7 @@ tbody td{padding:10px 13px;}
 <div id="loading-overlay" class="loading-overlay" style="display:none"><div class="spinner"></div><p>Carregando...</p></div>
 <div class="toasts" id="toasts"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ══════════════════════════════════════════
 //  AUTH
@@ -1455,6 +1481,138 @@ async function salvarMeta(){
 async function excluirMeta(id){
   try{await sbDelete('metas',id);S.metas=S.metas.filter(m=>m.id!==id);renderMetas();toast('Meta removida.','ok');}
   catch(e){toast('Erro: '+e.message,'err');}
+}
+
+// ══════════════════════════════════════════
+//  BACKUP — EXPORTAR EXCEL
+// ══════════════════════════════════════════
+function exportarExcel() {
+  try {
+    const wb = XLSX.utils.book_new();
+
+    // Aba: Lancamentos
+    const lancCols = ['id','data','valor','tipo','categoria','identificacao','descricao','status','observacao','parcelas','parcela_atual','valor_pago'];
+    const lancRows = S.lancamentos
+      .filter(l => !l.id.startsWith('fixa_')) // só lançamentos reais
+      .map(l => lancCols.map(c => l[c] ?? ''));
+    const wsLanc = XLSX.utils.aoa_to_sheet([lancCols, ...lancRows]);
+    wsLanc['!cols'] = lancCols.map(c => ({wch: Math.max(c.length, 14)}));
+    XLSX.utils.book_append_sheet(wb, wsLanc, 'Lancamentos');
+
+    // Aba: Despesas Fixas
+    const fixCols = ['id','identificacao','descricao','tipo','categoria','valor','parcelas','parcela_atual'];
+    const fixRows = S.fixas.map(f => fixCols.map(c => f[c] ?? ''));
+    const wsFix = XLSX.utils.aoa_to_sheet([fixCols, ...fixRows]);
+    XLSX.utils.book_append_sheet(wb, wsFix, 'DespesasFixas');
+
+    // Aba: Rendas Fixas
+    const rfCols = ['id','fonte','descricao','categoria','valor'];
+    const rfRows = S.rendasFixas.map(r => rfCols.map(c => r[c] ?? ''));
+    const wsRF = XLSX.utils.aoa_to_sheet([rfCols, ...rfRows]);
+    XLSX.utils.book_append_sheet(wb, wsRF, 'RendasFixas');
+
+    // Aba: Rendas Variáveis
+    const rvCols = ['id','fonte','descricao','categoria','valor','data'];
+    const rvRows = S.rendasVar.map(r => rvCols.map(c => r[c] ?? ''));
+    const wsRV = XLSX.utils.aoa_to_sheet([rvCols, ...rvRows]);
+    XLSX.utils.book_append_sheet(wb, wsRV, 'RendasVariaveis');
+
+    // Aba: Metas
+    const metCols = ['id','nome','alvo','atual','prazo'];
+    const metRows = S.metas.map(m => metCols.map(c => m[c] ?? ''));
+    const wsMet = XLSX.utils.aoa_to_sheet([metCols, ...metRows]);
+    XLSX.utils.book_append_sheet(wb, wsMet, 'Metas');
+
+    // Nome do arquivo com data
+    const hoje = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `finguard-backup-${hoje}.xlsx`);
+    toast('Backup exportado com sucesso!', 'ok');
+  } catch(e) {
+    toast('Erro ao exportar: ' + e.message, 'err');
+  }
+}
+
+// ══════════════════════════════════════════
+//  BACKUP — IMPORTAR EXCEL
+// ══════════════════════════════════════════
+async function importarExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('import-status');
+  status.textContent = 'Lendo arquivo...';
+  status.style.color = 'var(--text2)';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+
+    // Lê cada aba
+    const lerAba = (nome, colunas) => {
+      const ws = wb.Sheets[nome];
+      if (!ws) return [];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      if (rows.length < 2) return [];
+      const header = rows[0];
+      return rows.slice(1)
+        .filter(r => r.some(c => c !== '' && c !== null && c !== undefined))
+        .map(r => {
+          const obj = {};
+          header.forEach((h, i) => { if (colunas.includes(h)) obj[h] = r[i] ?? ''; });
+          return obj;
+        })
+        .filter(o => o.id); // só linhas com ID
+    };
+
+    const lancamentos  = lerAba('Lancamentos',    ['id','data','valor','tipo','categoria','identificacao','descricao','status','observacao','parcelas','parcela_atual','valor_pago']);
+    const fixas        = lerAba('DespesasFixas',  ['id','identificacao','descricao','tipo','categoria','valor','parcelas','parcela_atual']);
+    const rendasFixas  = lerAba('RendasFixas',     ['id','fonte','descricao','categoria','valor']);
+    const rendasVar    = lerAba('RendasVariaveis', ['id','fonte','descricao','categoria','valor','data']);
+    const metas        = lerAba('Metas',           ['id','nome','alvo','atual','prazo']);
+
+    const total = lancamentos.length + fixas.length + rendasFixas.length + rendasVar.length + metas.length;
+    if (total === 0) { status.textContent = 'Arquivo sem dados válidos.'; status.style.color='var(--red)'; return; }
+
+    status.textContent = `Encontrados: ${lancamentos.length} lançamentos, ${fixas.length} fixas, ${rendasFixas.length} rendas fixas, ${rendasVar.length} rendas variáveis, ${metas.length} metas. Importando...`;
+
+    showLoading(true);
+    let erros = 0;
+
+    // Insere em paralelo por tabela usando upsert (não duplica se já existir)
+    const inserir = async (tabela, dados) => {
+      for (const item of dados) {
+        try { await sbUpsert(tabela, item); }
+        catch(e) { erros++; console.error('Erro ao inserir', tabela, item.id, e.message); }
+      }
+    };
+
+    await Promise.all([
+      inserir('lancamentos',    lancamentos),
+      inserir('despesas_fixas', fixas),
+      inserir('rendas_fixas',   rendasFixas),
+      inserir('rendas_variaveis', rendasVar),
+      inserir('metas',          metas),
+    ]);
+
+    await loadAll();
+    showLoading(false);
+
+    if (erros === 0) {
+      status.textContent = `✓ ${total} registros restaurados com sucesso!`;
+      status.style.color = 'var(--accent)';
+      toast('Dados restaurados!', 'ok');
+    } else {
+      status.textContent = `Concluído com ${erros} erro(s). Verifique o console.`;
+      status.style.color = 'var(--amber)';
+    }
+
+    // Limpa o input para permitir reimportar o mesmo arquivo
+    input.value = '';
+  } catch(e) {
+    showLoading(false);
+    status.textContent = 'Erro ao ler arquivo: ' + e.message;
+    status.style.color = 'var(--red)';
+    toast('Erro ao importar.', 'err');
+  }
 }
 
 // ══════════════════════════════════════════
