@@ -659,7 +659,18 @@ tbody td{padding:10px 13px;}
       </div>
       <div class="fg">
         <label>Mês inicial</label>
-        <input type="month" id="rf-mes-inicio">
+        <div style="display:flex;gap:6px">
+          <select id="rf-mes-inicio-m" style="flex:1">
+            <option value="">Mês</option>
+            <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+            <option value="03">Março</option><option value="04">Abril</option>
+            <option value="05">Maio</option><option value="06">Junho</option>
+            <option value="07">Julho</option><option value="08">Agosto</option>
+            <option value="09">Setembro</option><option value="10">Outubro</option>
+            <option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <select id="rf-mes-inicio-y" style="flex:1" onchange=""></select>
+        </div>
         <span style="font-size:11px;color:var(--text2);margin-top:2px">A partir de quando essa renda começa</span>
       </div>
       <div class="fg">
@@ -925,7 +936,33 @@ function iniciarApp() {
   document.getElementById('f-tipo').addEventListener('change', onTipo);
   updMesLbl();
   popularSelectsCats();
+  popularSelectAnoRF();
   loadAll();
+}
+
+function popularSelectAnoRF() {
+  const anoAtual = new Date().getFullYear();
+  const sel = document.getElementById('rf-mes-inicio-y');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Ano</option>';
+  for (let a = anoAtual - 1; a <= anoAtual + 5; a++) {
+    sel.innerHTML += `<option value="${a}"${a === anoAtual ? ' selected' : ''}>${a}</option>`;
+  }
+}
+
+function getMesInicioRF() {
+  const m = document.getElementById('rf-mes-inicio-m').value;
+  const y = document.getElementById('rf-mes-inicio-y').value;
+  if (!m || !y) return null;
+  return `${y}-${m}`;
+}
+
+function setMesInicioRF(val) {
+  const selM = document.getElementById('rf-mes-inicio-m');
+  const selY = document.getElementById('rf-mes-inicio-y');
+  if (!val) { selM.value = ''; selY.value = new Date().getFullYear(); return; }
+  const parts = val.split('-');
+  if (parts.length >= 2) { selY.value = parts[0]; selM.value = parts[1]; }
 }
 
 // ══════════════════════════════════════════
@@ -1447,7 +1484,7 @@ function abrirEdicaoRendFixo(id){
   document.getElementById('rf-desc').value=r.descricao||'';
   document.getElementById('rf-valor').value=r.valor_bruto||r.valor||'';
   document.getElementById('rf-cat').value=r.categoria||'Salário';
-  document.getElementById('rf-mes-inicio').value=r.mes_inicio||'';
+  setMesInicioRF(r.mes_inicio||null);
   document.getElementById('rf-duracao').value=r.duracao_meses||'0';
   document.getElementById('rf-nf').checked=!!(r.tem_nf);
   document.getElementById('modal-rf-titulo').textContent='Editar Renda Fixa';
@@ -1460,7 +1497,7 @@ async function salvarRendFixo(){
   const fonte=document.getElementById('rf-fonte').value.trim();
   const valor_bruto=parseFloat(document.getElementById('rf-valor').value)||0;
   const tem_nf=document.getElementById('rf-nf').checked;
-  const mes_inicio=document.getElementById('rf-mes-inicio').value||null;
+  const mes_inicio=getMesInicioRF();
   const duracao_meses=parseInt(document.getElementById('rf-duracao').value)||0;
   if(!fonte||!valor_bruto){toast('Preencha fonte e valor.','err');return;}
   // Valor líquido: desconta 6% se tem NF
@@ -1477,7 +1514,8 @@ async function salvarRendFixo(){
       toast('Renda fixa cadastrada!','ok');
     }
     fecharModal('modal-rend-fixo');
-    ['rf-fonte','rf-desc','rf-valor','rf-edit-id','rf-mes-inicio'].forEach(id=>document.getElementById(id).value='');
+    ['rf-fonte','rf-desc','rf-valor','rf-edit-id'].forEach(id=>document.getElementById(id).value='');
+    setMesInicioRF(null);
     document.getElementById('rf-duracao').value='0';
     document.getElementById('rf-nf').checked=false;
     document.getElementById('rf-nf-preview').style.display='none';
