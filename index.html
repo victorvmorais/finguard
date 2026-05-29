@@ -1388,13 +1388,18 @@ function renderRendimentos(){
 
   const fmtPeriodo = r => {
     if (!r.mes_inicio) return 'Sempre';
-    const [y,m] = r.mes_inicio.split('-');
-    const ini = `${MESES[parseInt(m)-1].substring(0,3)}/${y}`;
+    const parts = r.mes_inicio.split('-');
+    if (parts.length < 2) return 'Sempre';
+    const y = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
+    if (isNaN(y) || isNaN(m) || m < 1 || m > 12) return 'Sempre';
+    const mesIdx = m - 1;
+    const ini = `${MESES[mesIdx].substring(0,3)}/${y}`;
     if (!r.duracao_meses || r.duracao_meses == 0) return `A partir de ${ini}`;
-    // calcula mês final
-    const fimNum = (parseInt(y)*12 + (parseInt(m)-1)) + parseInt(r.duracao_meses) - 1;
-    const fimY = Math.floor(fimNum/12);
-    const fimM = fimNum%12;
+    const fimNum = (y * 12 + mesIdx) + parseInt(r.duracao_meses) - 1;
+    const fimY = Math.floor(fimNum / 12);
+    const fimM = fimNum % 12;
+    if (fimM < 0 || fimM > 11 || !MESES[fimM]) return `A partir de ${ini}`;
     return `${ini} → ${MESES[fimM].substring(0,3)}/${fimY}`;
   };
 
