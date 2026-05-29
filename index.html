@@ -1374,16 +1374,17 @@ function renderRendimentos(){
   const desp=getMes().reduce((s,l)=>s+parseFloat(l.valor||0),0);
   const saldo=total-desp;
   const el2=document.getElementById('lbl-mes-rv');if(el2)el2.textContent=`${MESES[S.mes]} ${S.ano}`;
+
+  // Declarações antecipadas — necessário antes do uso nos cards
+  const fixasAtivas = S.rendasFixas.filter(r => rendaFixaAtivaNoMes(r, S.mes, S.ano));
+  const fixasInativas = S.rendasFixas.filter(r => !rendaFixaAtivaNoMes(r, S.mes, S.ano));
+
   document.getElementById('rend-cards').innerHTML=[
     {lbl:'Renda Total do Mês',val:fmt(total),sub:'fixo + variável',cls:'c-green'},
     {lbl:'Renda Fixa',        val:fmt(fixo), sub:`${fixasAtivas.length} fonte(s) ativas`,cls:''},
     {lbl:`Variável — ${MESES[S.mes]}`,val:fmt(varr),sub:`${S.rendasVar.filter(r=>{const d=new Date(r.data+'T00:00:00');return d.getMonth()===S.mes&&d.getFullYear()===S.ano;}).length} lançamento(s)`,cls:'c-blue'},
     {lbl:'Saldo do Mês',      val:fmt(saldo),sub:'renda − despesas',cls:saldo>=0?'c-green':'c-red'}
   ].map(c=>`<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
-
-  // Rendas fixas — mostra só as ativas no mês atual, com coluna de período
-  const fixasAtivas = S.rendasFixas.filter(r => rendaFixaAtivaNoMes(r, S.mes, S.ano));
-  const fixasInativas = S.rendasFixas.filter(r => !rendaFixaAtivaNoMes(r, S.mes, S.ano));
 
   const fmtPeriodo = r => {
     if (!r.mes_inicio) return 'Sempre';
