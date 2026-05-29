@@ -657,6 +657,33 @@ tbody td{padding:10px 13px;}
           <option value="Investimento">Investimento</option><option value="Outro">Outro</option>
         </select>
       </div>
+      <div class="fg">
+        <label>Mês inicial</label>
+        <input type="month" id="rf-mes-inicio">
+        <span style="font-size:11px;color:var(--text2);margin-top:2px">A partir de quando essa renda começa</span>
+      </div>
+      <div class="fg">
+        <label>Duração</label>
+        <select id="rf-duracao">
+          <option value="0">Indeterminado (para sempre)</option>
+          <option value="1">1 mês</option>
+          <option value="2">2 meses</option>
+          <option value="3">3 meses</option>
+          <option value="4">4 meses</option>
+          <option value="5">5 meses</option>
+          <option value="6">6 meses</option>
+          <option value="7">7 meses</option>
+          <option value="8">8 meses</option>
+          <option value="9">9 meses</option>
+          <option value="10">10 meses</option>
+          <option value="11">11 meses</option>
+          <option value="12">12 meses (1 ano)</option>
+          <option value="18">18 meses</option>
+          <option value="24">24 meses (2 anos)</option>
+          <option value="36">36 meses (3 anos)</option>
+        </select>
+        <span style="font-size:11px;color:var(--text2);margin-top:2px">Por quantos meses essa renda se repete</span>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="fecharModal('modal-rend-fixo')">Cancelar</button>
@@ -1040,8 +1067,24 @@ function getMes(){
 // ══════════════════════════════════════════
 //  DASHBOARD / VISÃO GERAL
 // ══════════════════════════════════════════
+function rendaFixaAtivaNoMes(r, m, y) {
+  // Se não tem mes_inicio definido, aparece sempre (retrocompatível)
+  if (!r.mes_inicio) return true;
+  // Compara mês/ano de início
+  const [iniY, iniM] = r.mes_inicio.split('-').map(Number);
+  const mesAtualNum  = y * 12 + m;
+  const mesInicioNum = iniY * 12 + (iniM - 1);
+  if (mesAtualNum < mesInicioNum) return false; // antes do início
+  // Se duracao_meses = 0 ou indefinido = para sempre
+  const dur = parseInt(r.duracao_meses) || 0;
+  if (dur === 0) return true;
+  return mesAtualNum < mesInicioNum + dur; // dentro do período
+}
+
 function getTotalRenda(m,y){
-  const fixo=S.rendasFixas.reduce((s,r)=>s+parseFloat(r.valor||0),0);
+  const fixo=S.rendasFixas
+    .filter(r => rendaFixaAtivaNoMes(r, m, y))
+    .reduce((s,r)=>s+parseFloat(r.valor||0),0);
   const varr=S.rendasVar.filter(r=>{const d=new Date(r.data+'T00:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,r)=>s+parseFloat(r.valor||0),0);
   return {fixo,varr,total:fixo+varr};
 }
@@ -1310,20 +1353,41 @@ function renderRendimentos(){
   const el2=document.getElementById('lbl-mes-rv');if(el2)el2.textContent=`${MESES[S.mes]} ${S.ano}`;
   document.getElementById('rend-cards').innerHTML=[
     {lbl:'Renda Total do Mês',val:fmt(total),sub:'fixo + variável',cls:'c-green'},
-    {lbl:'Renda Fixa',        val:fmt(fixo), sub:`${S.rendasFixas.length} fonte(s)`,cls:''},
+    {lbl:'Renda Fixa',        val:fmt(fixo), sub:`${fixasAtivas.length} fonte(s) ativas`,cls:''},
     {lbl:`Variável — ${MESES[S.mes]}`,val:fmt(varr),sub:`${S.rendasVar.filter(r=>{const d=new Date(r.data+'T00:00:00');return d.getMonth()===S.mes&&d.getFullYear()===S.ano;}).length} lançamento(s)`,cls:'c-blue'},
     {lbl:'Saldo do Mês',      val:fmt(saldo),sub:'renda − despesas',cls:saldo>=0?'c-green':'c-red'}
   ].map(c=>`<div class="card-m"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
 
+  // Rendas fixas — mostra só as ativas no mês atual, com coluna de período
+  const fixasAtivas = S.rendasFixas.filter(r => rendaFixaAtivaNoMes(r, S.mes, S.ano));
+  const fixasInativas = S.rendasFixas.filter(r => !rendaFixaAtivaNoMes(r, S.mes, S.ano));
+
+  const fmtPeriodo = r => {
+    if (!r.mes_inicio) return 'Sempre';
+    const [y,m] = r.mes_inicio.split('-');
+    const ini = `${MESES[parseInt(m)-1].substring(0,3)}/${y}`;
+    if (!r.duracao_meses || r.duracao_meses == 0) return `A partir de ${ini}`;
+    // calcula mês final
+    const fimNum = (parseInt(y)*12 + (parseInt(m)-1)) + parseInt(r.duracao_meses) - 1;
+    const fimY = Math.floor(fimNum/12);
+    const fimM = fimNum%12;
+    return `${ini} → ${MESES[fimM].substring(0,3)}/${fimY}`;
+  };
+
+  const renderLinhaRF = (r, inativo=false) => `<tr style="${inativo?'opacity:.4;':''}">
+    <td style="font-weight:600">${r.fonte||'—'}${inativo?` <span style="font-size:10px;color:var(--text3)">(fora do período)</span>`:''}</td>
+    <td style="color:var(--text2)">${r.descricao||'—'}</td>
+    <td><span class="badge" style="background:var(--teal-d);color:var(--teal)">${r.categoria||'—'}</span></td>
+    <td style="font-size:11px;color:var(--text2)">${fmtPeriodo(r)}</td>
+    <td class="td-val" style="color:${inativo?'var(--text3)':'var(--teal)'}">${fmt(r.valor)}</td>
+    <td style="display:flex;gap:4px"><button class="btn-edit" onclick="abrirEdicaoRendFixo('${r.id}')">✎</button><button class="btn btn-danger btn-sm" onclick="excluirRendFixo('${r.id}')">✕</button></td>
+  </tr>`;
+
   document.getElementById('lista-rend-fixo').innerHTML=S.rendasFixas.length?
-    `<table><thead><tr><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor/mês</th><th></th></tr></thead><tbody>
-    ${S.rendasFixas.map(r=>`<tr>
-      <td style="font-weight:600">${r.fonte||'—'}</td>
-      <td style="color:var(--text2)">${r.descricao||'—'}</td>
-      <td><span class="badge" style="background:var(--teal-d);color:var(--teal)">${r.categoria||'—'}</span></td>
-      <td class="td-val" style="color:var(--teal)">${fmt(r.valor)}</td>
-      <td style="display:flex;gap:4px"><button class="btn-edit" onclick="abrirEdicaoRendFixo('${r.id}')">✎</button><button class="btn btn-danger btn-sm" onclick="excluirRendFixo('${r.id}')">✕</button></td>
-    </tr>`).join('')}</tbody></table>`:
+    `<table><thead><tr><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Período</th><th>Valor/mês</th><th></th></tr></thead><tbody>
+    ${fixasAtivas.map(r=>renderLinhaRF(r,false)).join('')}
+    ${fixasInativas.map(r=>renderLinhaRF(r,true)).join('')}
+    </tbody></table>`:
     '<div class="empty">Nenhuma renda fixa cadastrada.</div>';
 
   const vars=S.rendasVar.filter(r=>{const d=new Date(r.data+'T00:00:00');return d.getMonth()===S.mes&&d.getFullYear()===S.ano;});
@@ -1348,6 +1412,8 @@ function abrirEdicaoRendFixo(id){
   document.getElementById('rf-desc').value=r.descricao||'';
   document.getElementById('rf-valor').value=r.valor||'';
   document.getElementById('rf-cat').value=r.categoria||'Salário';
+  document.getElementById('rf-mes-inicio').value=r.mes_inicio||'';
+  document.getElementById('rf-duracao').value=r.duracao_meses||'0';
   document.getElementById('modal-rf-titulo').textContent='Editar Renda Fixa';
   abrirModal('modal-rend-fixo');
 }
@@ -1356,8 +1422,10 @@ async function salvarRendFixo(){
   const editId=document.getElementById('rf-edit-id').value;
   const fonte=document.getElementById('rf-fonte').value.trim();
   const valor=parseFloat(document.getElementById('rf-valor').value);
+  const mes_inicio=document.getElementById('rf-mes-inicio').value||null;
+  const duracao_meses=parseInt(document.getElementById('rf-duracao').value)||0;
   if(!fonte||!valor){toast('Preencha fonte e valor.','err');return;}
-  const dados={fonte,descricao:document.getElementById('rf-desc').value.trim(),categoria:document.getElementById('rf-cat').value,valor};
+  const dados={fonte,descricao:document.getElementById('rf-desc').value.trim(),categoria:document.getElementById('rf-cat').value,valor,mes_inicio,duracao_meses};
   try{
     if(editId){
       await sbUpdate('rendas_fixas',editId,dados);
@@ -1369,7 +1437,8 @@ async function salvarRendFixo(){
       toast('Renda fixa cadastrada!','ok');
     }
     fecharModal('modal-rend-fixo');
-    ['rf-fonte','rf-desc','rf-valor','rf-edit-id'].forEach(id=>document.getElementById(id).value='');
+    ['rf-fonte','rf-desc','rf-valor','rf-edit-id','rf-mes-inicio'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('rf-duracao').value='0';
     document.getElementById('modal-rf-titulo').textContent='Cadastrar Renda Fixa';
     renderRendimentos();renderDash();
   }catch(e){toast('Erro: '+e.message,'err');}
