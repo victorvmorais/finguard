@@ -1090,13 +1090,11 @@ function getMes(){
   const mesStr = String(S.mes+1).padStart(2,'0');
   const base = [...S.lancamentos];
 
+  // ── Despesas Fixas: injeta ref virtual se não houver lançamento real ──
   S.fixas.forEach(f => {
-    // Verifica se já existe um lançamento real para essa fixa neste mês
     const realId = `fixa_real_${f.id}_${S.ano}_${S.mes}`;
     const temReal = base.find(l => l.id === realId);
-
     if (!temReal) {
-      // Só injeta a ref se não houver lançamento real para esse mês
       const chave = `fixa_${f.id}_${S.ano}_${S.mes}`;
       if (!base.find(l => l.id === chave)) {
         base.push({
@@ -1109,11 +1107,56 @@ function getMes(){
         });
       }
     }
-    // Se temReal, o lançamento real já está em base e representa essa fixa neste mês
-    // Marcamos ele como isFixaRef para manter o botão de edição da fixa
-    if (temReal) {
-      temReal.isFixaRef = true;
-      temReal.fixaId = f.id;
+    if (temReal) { temReal.isFixaRef = true; temReal.fixaId = f.id; }
+  });
+
+  // ── Parcelados: projeta parcelas futuras a partir do lançamento original ──
+  S.lancamentos.forEach(orig => {
+    if (orig.tipo !== 'PARCELADO') return;
+    const parcTot = parseInt(orig.parcelas);
+    const parcAt  = parseInt(orig.parcela_atual);
+    if (!parcTot || !parcAt || !orig.data) return;
+
+    // data da parcela original (âncora)
+    const dOrig = new Date(orig.data + 'T00:00:00');
+    const anoOrig = dOrig.getFullYear();
+    const mesOrig = dOrig.getMonth(); // 0-based
+
+    // quantas parcelas restam a partir da próxima
+    const restantes = parcTot - parcAt;
+    if (restantes <= 0) return;
+
+    for (let i = 1; i <= restantes; i++) {
+      let mProj = mesOrig + i;
+      let yProj = anoOrig + Math.floor(mProj / 12);
+      mProj = mProj % 12;
+
+      // só injeta se não houver lançamento real para essa parcela nesse mês
+      const chaveProj = `parc_${orig.id}_${yProj}_${mProj}`;
+      if (base.find(l => l.id === chaveProj)) continue;
+
+      // verifica se já existe lançamento real salvo no banco para essa parcela
+      // (identificado por mesma identificação+descrição+tipo+valor no mesmo mês/ano)
+      const jaTemReal = S.lancamentos.find(l =>
+        l.tipo === 'PARCELADO' &&
+        l.identificacao === orig.identificacao &&
+        l.categoria === orig.categoria &&
+        parseFloat(l.valor) === parseFloat(orig.valor) &&
+        parseInt(l.parcela_atual) === (parcAt + i) &&
+        parseInt(l.parcelas) === parcTot
+      );
+      if (jaTemReal) continue;
+
+      const dStr = String(mProj + 1).padStart(2,'0');
+      base.push({
+        id: chaveProj,
+        data: `${yProj}-${dStr}-01`,
+        valor: orig.valor, tipo: 'PARCELADO', categoria: orig.categoria,
+        identificacao: orig.identificacao, descricao: orig.descricao,
+        parcelas: parcTot, parcela_atual: parcAt + i,
+        status: 'PENDENTE', valor_pago: 0,
+        isParcRef: true, parcOrigId: orig.id
+      });
     }
   });
 
@@ -1247,12 +1290,12 @@ function renderDesp(){
         <td><span class="badge ${TIPO_COR[l.tipo]||''}">${l.tipo||'—'}</span></td>
         <td style="color:var(--text2);font-size:12px">${l.parcelas?`${l.parcela_atual||l.parcelaAtual}/${l.parcelas}`:'—'}</td>
         <td class="td-val">${fmt(l.valor)}</td>
-        <td><input class="pag-input" type="number" value="${pg||''}" placeholder="0,00" min="0" max="${tot}" step="0.01" onchange="regPagamento('${l.id}',this.value,${tot},${!!l.isFixaRef})" onblur="regPagamento('${l.id}',this.value,${tot},${!!l.isFixaRef})"></td>
+        <td><input class="pag-input" type="number" value="${pg||''}" placeholder="0,00" min="0" max="${tot}" step="0.01" onchange="regPagamento('${l.id}',this.value,${tot},${!!l.isFixaRef},${!!l.isParcRef})" onblur="regPagamento('${l.id}',this.value,${tot},${!!l.isFixaRef},${!!l.isParcRef})"></td>
         <td><span class="pag-restante ${clsR}">${rest<=0?'✓ Quitado':fmt(rest)}</span></td>
-        <td><button class="status-btn ${l.status==='PAGO'?'pago':'pendente'}" onclick="toggleStatus('${l.id}',${!!l.isFixaRef})">${l.status||'PENDENTE'}</button></td>
+        <td><button class="status-btn ${l.status==='PAGO'?'pago':'pendente'}" onclick="toggleStatus('${l.id}',${!!l.isFixaRef},${!!l.isParcRef})">${l.status||'PENDENTE'}</button></td>
         <td style="display:flex;gap:4px;align-items:center">
-          <button class="btn-edit" onclick="${l.isFixaRef?`abrirEdicaoFixaDesp('${l.fixaId}')`:`abrirEdicao('${l.id}')`}">✎</button>
-          ${!l.isFixaRef?`<button class="btn btn-danger btn-sm" onclick="excluir('${l.id}')">✕</button>`:''}
+          <button class="btn-edit" onclick="${l.isFixaRef?`abrirEdicaoFixaDesp('${l.fixaId}')`:l.isParcRef?`abrirEdicao('${l.parcOrigId}')`:`abrirEdicao('${l.id}')`}">✎</button>
+          ${(!l.isFixaRef&&!l.isParcRef)?`<button class="btn btn-danger btn-sm" onclick="excluir('${l.id}')">✕</button>`:''}
         </td>
       </tr>`;
     }).join('')}</tbody></table>`:
@@ -1261,7 +1304,7 @@ function renderDesp(){
 
 function fDesp(f,btn){S.filtroDesp=f;document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderDesp();}
 
-async function toggleStatus(id,isFixaRef){
+async function toggleStatus(id,isFixaRef,isParcRef){
   if(isFixaRef){
     const lanc=getMes().find(l=>l.id===id);if(!lanc)return;
     const novoStatus=lanc.status==='PAGO'?'PENDENTE':'PAGO';
@@ -1269,6 +1312,14 @@ async function toggleStatus(id,isFixaRef){
     const exist=S.lancamentos.find(l=>l.id===novoId);
     if(exist){await sbUpdate('lancamentos',novoId,{status:novoStatus});exist.status=novoStatus;}
     else{const novo={...lanc,id:novoId,status:novoStatus,valor_pago:0,isFixaRef:undefined,fixaId:undefined};delete novo.isFixaRef;delete novo.fixaId;await sbInsert('lancamentos',novo);S.lancamentos.push(novo);}
+  } else if(isParcRef){
+    const lanc=getMes().find(l=>l.id===id);if(!lanc)return;
+    const novoStatus=lanc.status==='PAGO'?'PENDENTE':'PAGO';
+    const novoId=`parc_real_${lanc.parcOrigId}_${S.ano}_${S.mes}`;
+    const exist=S.lancamentos.find(l=>l.id===novoId);
+    if(exist){await sbUpdate('lancamentos',novoId,{status:novoStatus});exist.status=novoStatus;}
+    else{const novo={...lanc,id:novoId,status:novoStatus,valor_pago:0};delete novo.isParcRef;delete novo.parcOrigId;await sbInsert('lancamentos',novo);S.lancamentos.push(novo);}
+    toast(novoStatus==='PAGO'?'Marcado como pago!':'Revertido para pendente.','ok');
   } else {
     const l=S.lancamentos.find(x=>x.id===id);if(!l)return;
     const ns=l.status==='PAGO'?'PENDENTE':'PAGO';
@@ -1278,7 +1329,7 @@ async function toggleStatus(id,isFixaRef){
   renderDesp();renderDash();
 }
 
-async function regPagamento(id,val,total,isFixaRef){
+async function regPagamento(id,val,total,isFixaRef,isParcRef){
   const v=Math.min(Math.max(parseFloat(val)||0,0),total);
   if(isFixaRef){
     const lanc=getMes().find(l=>l.id===id);if(!lanc)return;
@@ -1286,6 +1337,12 @@ async function regPagamento(id,val,total,isFixaRef){
     const exist=S.lancamentos.find(l=>l.id===novoId);
     if(exist){await sbUpdate('lancamentos',novoId,{valor_pago:v});exist.valor_pago=v;}
     else{const novo={...lanc,id:novoId,valor_pago:v,isFixaRef:undefined,fixaId:undefined};delete novo.isFixaRef;delete novo.fixaId;await sbInsert('lancamentos',novo);S.lancamentos.push(novo);}
+  } else if(isParcRef){
+    const lanc=getMes().find(l=>l.id===id);if(!lanc)return;
+    const novoId=`parc_real_${lanc.parcOrigId}_${S.ano}_${S.mes}`;
+    const exist=S.lancamentos.find(l=>l.id===novoId);
+    if(exist){await sbUpdate('lancamentos',novoId,{valor_pago:v});exist.valor_pago=v;}
+    else{const novo={...lanc,id:novoId,valor_pago:v};delete novo.isParcRef;delete novo.parcOrigId;await sbInsert('lancamentos',novo);S.lancamentos.push(novo);}
   } else {
     const l=S.lancamentos.find(x=>x.id===id);if(!l)return;
     await sbUpdate('lancamentos',id,{valor_pago:v});l.valor_pago=v;
