@@ -650,7 +650,7 @@ tbody td{padding:10px 13px;}
     <div class="form-grid">
       <div class="fg span2"><label>Fonte / Empresa</label><input type="text" id="rf-fonte" placeholder="Ex: Emergency Talks"></div>
       <div class="fg span2"><label>Descrição</label><input type="text" id="rf-desc" placeholder="Ex: Salário PJ"></div>
-      <div class="fg"><label>Valor (R$)</label><input type="number" id="rf-valor" step="0.01"></div>
+      <div class="fg"><label>Valor bruto (R$)</label><input type="number" id="rf-valor" step="0.01" oninput="atualizarPreviewNF('rf')"></div>
       <div class="fg"><label>Categoria</label>
         <select id="rf-cat">
           <option value="Salário">Salário</option><option value="Pró-labore">Pró-labore</option>
@@ -666,23 +666,31 @@ tbody td{padding:10px 13px;}
         <label>Duração</label>
         <select id="rf-duracao">
           <option value="0">Indeterminado (para sempre)</option>
-          <option value="1">1 mês</option>
-          <option value="2">2 meses</option>
-          <option value="3">3 meses</option>
-          <option value="4">4 meses</option>
-          <option value="5">5 meses</option>
-          <option value="6">6 meses</option>
-          <option value="7">7 meses</option>
-          <option value="8">8 meses</option>
-          <option value="9">9 meses</option>
-          <option value="10">10 meses</option>
-          <option value="11">11 meses</option>
-          <option value="12">12 meses (1 ano)</option>
-          <option value="18">18 meses</option>
-          <option value="24">24 meses (2 anos)</option>
+          <option value="1">1 mês</option><option value="2">2 meses</option>
+          <option value="3">3 meses</option><option value="4">4 meses</option>
+          <option value="5">5 meses</option><option value="6">6 meses</option>
+          <option value="7">7 meses</option><option value="8">8 meses</option>
+          <option value="9">9 meses</option><option value="10">10 meses</option>
+          <option value="11">11 meses</option><option value="12">12 meses (1 ano)</option>
+          <option value="18">18 meses</option><option value="24">24 meses (2 anos)</option>
           <option value="36">36 meses (3 anos)</option>
         </select>
         <span style="font-size:11px;color:var(--text2);margin-top:2px">Por quantos meses essa renda se repete</span>
+      </div>
+      <!-- NOTA FISCAL -->
+      <div class="fg span2">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+          <input type="checkbox" id="rf-nf" onchange="atualizarPreviewNF('rf')"
+            style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+          Esta renda tem Nota Fiscal — descontar 6% de imposto
+        </label>
+        <div id="rf-nf-preview" style="display:none;margin-top:8px;padding:10px 14px;background:var(--amber-d);border:1px solid rgba(245,158,11,.25);border-radius:var(--r-sm);font-size:12px">
+          <span style="color:var(--text2)">Valor bruto: </span><span id="rf-nf-bruto" style="font-weight:600"></span>
+          <span style="color:var(--text2);margin:0 8px">−</span>
+          <span style="color:var(--text2)">6% NF: </span><span id="rf-nf-imposto" style="color:var(--red);font-weight:600"></span>
+          <span style="color:var(--text2);margin:0 8px">=</span>
+          <span style="color:var(--text2)">Líquido: </span><span id="rf-nf-liquido" style="color:var(--accent);font-weight:700"></span>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -699,7 +707,7 @@ tbody td{padding:10px 13px;}
     <div class="form-grid">
       <div class="fg span2"><label>Fonte / Cliente</label><input type="text" id="rv-fonte" placeholder="Ex: Freela empresa X"></div>
       <div class="fg span2"><label>Descrição</label><input type="text" id="rv-desc" placeholder="Ex: Criação de site"></div>
-      <div class="fg"><label>Valor (R$)</label><input type="number" id="rv-valor" step="0.01"></div>
+      <div class="fg"><label>Valor bruto (R$)</label><input type="number" id="rv-valor" step="0.01" oninput="atualizarPreviewNF('rv')"></div>
       <div class="fg"><label>Categoria</label>
         <select id="rv-cat">
           <option value="Freelance">Freelance</option><option value="Bônus">Bônus</option>
@@ -707,6 +715,21 @@ tbody td{padding:10px 13px;}
         </select>
       </div>
       <div class="fg"><label>Data</label><input type="date" id="rv-data"></div>
+      <!-- NOTA FISCAL -->
+      <div class="fg span2">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+          <input type="checkbox" id="rv-nf" onchange="atualizarPreviewNF('rv')"
+            style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+          Esta renda tem Nota Fiscal — descontar 6% de imposto
+        </label>
+        <div id="rv-nf-preview" style="display:none;margin-top:8px;padding:10px 14px;background:var(--amber-d);border:1px solid rgba(245,158,11,.25);border-radius:var(--r-sm);font-size:12px">
+          <span style="color:var(--text2)">Valor bruto: </span><span id="rv-nf-bruto" style="font-weight:600"></span>
+          <span style="color:var(--text2);margin:0 8px">−</span>
+          <span style="color:var(--text2)">6% NF: </span><span id="rv-nf-imposto" style="color:var(--red);font-weight:600"></span>
+          <span style="color:var(--text2);margin:0 8px">=</span>
+          <span style="color:var(--text2)">Líquido: </span><span id="rv-nf-liquido" style="color:var(--accent);font-weight:700"></span>
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="fecharModal('modal-rend-var')">Cancelar</button>
@@ -1375,11 +1398,14 @@ function renderRendimentos(){
   };
 
   const renderLinhaRF = (r, inativo=false) => `<tr style="${inativo?'opacity:.4;':''}">
-    <td style="font-weight:600">${r.fonte||'—'}${inativo?` <span style="font-size:10px;color:var(--text3)">(fora do período)</span>`:''}</td>
+    <td style="font-weight:600">${r.fonte||'—'}${r.tem_nf?` <span style="font-size:10px;background:var(--amber-d);color:var(--amber);padding:2px 6px;border-radius:100px;border:1px solid rgba(245,158,11,.25);margin-left:4px">NF −6%</span>`:''}${inativo?` <span style="font-size:10px;color:var(--text3)">(fora do período)</span>`:''}</td>
     <td style="color:var(--text2)">${r.descricao||'—'}</td>
     <td><span class="badge" style="background:var(--teal-d);color:var(--teal)">${r.categoria||'—'}</span></td>
     <td style="font-size:11px;color:var(--text2)">${fmtPeriodo(r)}</td>
-    <td class="td-val" style="color:${inativo?'var(--text3)':'var(--teal)'}">${fmt(r.valor)}</td>
+    <td>
+      <div class="td-val" style="color:${inativo?'var(--text3)':'var(--teal)'}">${fmt(r.valor)}</div>
+      ${r.tem_nf?`<div style="font-size:10px;color:var(--text2)">bruto ${fmt(r.valor_bruto||r.valor)}</div>`:''}
+    </td>
     <td style="display:flex;gap:4px"><button class="btn-edit" onclick="abrirEdicaoRendFixo('${r.id}')">✎</button><button class="btn btn-danger btn-sm" onclick="excluirRendFixo('${r.id}')">✕</button></td>
   </tr>`;
 
@@ -1395,10 +1421,13 @@ function renderRendimentos(){
     `<table><thead><tr><th>Data</th><th>Fonte</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead><tbody>
     ${vars.map(r=>`<tr>
       <td style="color:var(--text2);font-size:12px">${fmtD(r.data)}</td>
-      <td style="font-weight:600">${r.fonte||'—'}</td>
+      <td style="font-weight:600">${r.fonte||'—'}${r.tem_nf?` <span style="font-size:10px;background:var(--amber-d);color:var(--amber);padding:2px 6px;border-radius:100px;border:1px solid rgba(245,158,11,.25);margin-left:4px">NF −6%</span>`:''}</td>
       <td style="color:var(--text2)">${r.descricao||'—'}</td>
       <td><span class="badge" style="background:var(--blue-d);color:var(--blue)">${r.categoria||'—'}</span></td>
-      <td class="td-val" style="color:var(--teal)">${fmt(r.valor)}</td>
+      <td>
+        <div class="td-val" style="color:var(--teal)">${fmt(r.valor)}</div>
+        ${r.tem_nf?`<div style="font-size:10px;color:var(--text2)">bruto ${fmt(r.valor_bruto||r.valor)}</div>`:''}
+      </td>
       <td style="display:flex;gap:4px"><button class="btn-edit" onclick="abrirEdicaoRendVar('${r.id}')">✎</button><button class="btn btn-danger btn-sm" onclick="excluirRendVar('${r.id}')">✕</button></td>
     </tr>`).join('')}</tbody></table>`:
     `<div class="empty">Nenhum lançamento variável em ${MESES[S.mes]}.</div>`;
@@ -1410,22 +1439,27 @@ function abrirEdicaoRendFixo(id){
   document.getElementById('rf-edit-id').value=id;
   document.getElementById('rf-fonte').value=r.fonte||'';
   document.getElementById('rf-desc').value=r.descricao||'';
-  document.getElementById('rf-valor').value=r.valor||'';
+  document.getElementById('rf-valor').value=r.valor_bruto||r.valor||'';
   document.getElementById('rf-cat').value=r.categoria||'Salário';
   document.getElementById('rf-mes-inicio').value=r.mes_inicio||'';
   document.getElementById('rf-duracao').value=r.duracao_meses||'0';
+  document.getElementById('rf-nf').checked=!!(r.tem_nf);
   document.getElementById('modal-rf-titulo').textContent='Editar Renda Fixa';
+  atualizarPreviewNF('rf');
   abrirModal('modal-rend-fixo');
 }
 
 async function salvarRendFixo(){
   const editId=document.getElementById('rf-edit-id').value;
   const fonte=document.getElementById('rf-fonte').value.trim();
-  const valor=parseFloat(document.getElementById('rf-valor').value);
+  const valor_bruto=parseFloat(document.getElementById('rf-valor').value)||0;
+  const tem_nf=document.getElementById('rf-nf').checked;
   const mes_inicio=document.getElementById('rf-mes-inicio').value||null;
   const duracao_meses=parseInt(document.getElementById('rf-duracao').value)||0;
-  if(!fonte||!valor){toast('Preencha fonte e valor.','err');return;}
-  const dados={fonte,descricao:document.getElementById('rf-desc').value.trim(),categoria:document.getElementById('rf-cat').value,valor,mes_inicio,duracao_meses};
+  if(!fonte||!valor_bruto){toast('Preencha fonte e valor.','err');return;}
+  // Valor líquido: desconta 6% se tem NF
+  const valor=tem_nf ? parseFloat((valor_bruto*0.94).toFixed(2)) : valor_bruto;
+  const dados={fonte,descricao:document.getElementById('rf-desc').value.trim(),categoria:document.getElementById('rf-cat').value,valor,valor_bruto,tem_nf,mes_inicio,duracao_meses};
   try{
     if(editId){
       await sbUpdate('rendas_fixas',editId,dados);
@@ -1439,6 +1473,8 @@ async function salvarRendFixo(){
     fecharModal('modal-rend-fixo');
     ['rf-fonte','rf-desc','rf-valor','rf-edit-id','rf-mes-inicio'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('rf-duracao').value='0';
+    document.getElementById('rf-nf').checked=false;
+    document.getElementById('rf-nf-preview').style.display='none';
     document.getElementById('modal-rf-titulo').textContent='Cadastrar Renda Fixa';
     renderRendimentos();renderDash();
   }catch(e){toast('Erro: '+e.message,'err');}
@@ -1455,20 +1491,24 @@ function abrirEdicaoRendVar(id){
   document.getElementById('rv-edit-id').value=id;
   document.getElementById('rv-fonte').value=r.fonte||'';
   document.getElementById('rv-desc').value=r.descricao||'';
-  document.getElementById('rv-valor').value=r.valor||'';
+  document.getElementById('rv-valor').value=r.valor_bruto||r.valor||'';
   document.getElementById('rv-cat').value=r.categoria||'Freelance';
   document.getElementById('rv-data').value=r.data||hoje();
+  document.getElementById('rv-nf').checked=!!(r.tem_nf);
   document.getElementById('modal-rv-titulo').textContent='Editar Renda Variável';
+  atualizarPreviewNF('rv');
   abrirModal('modal-rend-var');
 }
 
 async function salvarRendVar(){
   const editId=document.getElementById('rv-edit-id').value;
   const fonte=document.getElementById('rv-fonte').value.trim();
-  const valor=parseFloat(document.getElementById('rv-valor').value);
+  const valor_bruto=parseFloat(document.getElementById('rv-valor').value)||0;
   const data=document.getElementById('rv-data').value;
-  if(!fonte||!valor||!data){toast('Preencha fonte, valor e data.','err');return;}
-  const dados={fonte,descricao:document.getElementById('rv-desc').value.trim(),categoria:document.getElementById('rv-cat').value,valor,data};
+  const tem_nf=document.getElementById('rv-nf').checked;
+  if(!fonte||!valor_bruto||!data){toast('Preencha fonte, valor e data.','err');return;}
+  const valor=tem_nf ? parseFloat((valor_bruto*0.94).toFixed(2)) : valor_bruto;
+  const dados={fonte,descricao:document.getElementById('rv-desc').value.trim(),categoria:document.getElementById('rv-cat').value,valor,valor_bruto,tem_nf,data};
   try{
     if(editId){
       await sbUpdate('rendas_variaveis',editId,dados);
@@ -1481,6 +1521,8 @@ async function salvarRendVar(){
     }
     fecharModal('modal-rend-var');
     ['rv-fonte','rv-desc','rv-valor','rv-edit-id'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('rv-nf').checked=false;
+    document.getElementById('rv-nf-preview').style.display='none';
     document.getElementById('modal-rv-titulo').textContent='Lançar Renda Variável';
     renderRendimentos();renderDash();
   }catch(e){toast('Erro: '+e.message,'err');}
@@ -1682,6 +1724,22 @@ async function importarExcel(input) {
     status.style.color = 'var(--red)';
     toast('Erro ao importar.', 'err');
   }
+}
+
+// ══════════════════════════════════════════
+//  NOTA FISCAL — preview de desconto 6%
+// ══════════════════════════════════════════
+function atualizarPreviewNF(prefixo) {
+  const temNF  = document.getElementById(`${prefixo}-nf`).checked;
+  const bruto  = parseFloat(document.getElementById(`${prefixo}-valor`).value)||0;
+  const prev   = document.getElementById(`${prefixo}-nf-preview`);
+  if (!temNF || !bruto) { prev.style.display='none'; return; }
+  const imposto = parseFloat((bruto*0.06).toFixed(2));
+  const liquido = parseFloat((bruto*0.94).toFixed(2));
+  document.getElementById(`${prefixo}-nf-bruto`).textContent   = fmt(bruto);
+  document.getElementById(`${prefixo}-nf-imposto`).textContent = fmt(imposto);
+  document.getElementById(`${prefixo}-nf-liquido`).textContent = fmt(liquido);
+  prev.style.display = 'block';
 }
 
 // ══════════════════════════════════════════
